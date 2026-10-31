@@ -6,6 +6,7 @@ import 'package:printing/printing.dart';
 import '../db.dart';
 import '../docs/plw_request.dart';
 import '../docs/rhd_registers.dart';
+import '../docs/treatment_register.dart';
 import '../owner.dart';
 import '../widgets.dart';
 import 'owner_screen.dart';
@@ -66,11 +67,17 @@ class DocumentsScreen extends StatelessWidget {
           }),
         ),
         const _Section('Leczenie'),
-        const ListTile(
-          enabled: false,
-          leading: Icon(Icons.medication_outlined, size: 30),
-          title: Text('Ewidencja leczenia (art. 108 rozp. UE 2019/6)'),
-          subtitle: Text('W przygotowaniu'),
+        ListTile(
+          leading: const Icon(Icons.medication_outlined, size: 30),
+          title: const Text('Ewidencja leczenia'),
+          subtitle: const Text('Art. 108 rozp. (UE) 2019/6 – przechowywać 5 lat'),
+          trailing: const Icon(Icons.picture_as_pdf_outlined),
+          onTap: () => _yearPdf(context, 'Ewidencja leczenia', 'ewidencja-leczenia', (y, o) async {
+            final apiaries = await Db.instance.list('apiaries');
+            final hives = await Db.instance.list('hives');
+            return buildTreatmentRegister(y, await Db.instance.list('treatments'),
+                {for (final a in apiaries) '${a['id']}': a}, {for (final h in hives) '${h['id']}': h}, o);
+          }),
         ),
       ]),
     );

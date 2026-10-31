@@ -6,6 +6,7 @@ import '../sync.dart';
 import 'feeding_form.dart';
 import 'forms.dart';
 import 'hive_screen.dart';
+import 'treatment_form.dart';
 import 'weather_screen.dart';
 
 class ApiaryScreen extends StatefulWidget {
@@ -179,6 +180,16 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
                   icon: const Icon(Icons.water_drop_outlined, size: 26),
                   label: const Text('Karmienie', style: TextStyle(fontSize: 18)),
                 ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              height: 64,
+              width: 64,
+              child: FilledButton.tonal(
+                style: FilledButton.styleFrom(padding: EdgeInsets.zero),
+                onPressed: _hives.isEmpty ? null : () => _open(TreatmentForm(apiaryId: widget.apiaryId)),
+                child: const Icon(Icons.medication_outlined, size: 28),
               ),
             ),
           ]),

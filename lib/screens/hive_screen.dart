@@ -8,6 +8,7 @@ import '../sync.dart';
 import 'feeding_form.dart';
 import 'forms.dart';
 import 'inspection_form.dart';
+import 'treatment_form.dart';
 
 /// Treść kodu QR naklejanego na ul.
 String hiveQrData(String hiveId) => 'mobeehive:hive:$hiveId';
@@ -25,6 +26,7 @@ class _HiveScreenState extends State<HiveScreen> {
   String? _typeName;
   List<Map<String, dynamic>> _inspections = [];
   List<Map<String, dynamic>> _feedings = [];
+  List<Map<String, dynamic>> _treatments = [];
   bool _loaded = false;
 
   @override
@@ -49,12 +51,19 @@ class _HiveScreenState extends State<HiveScreen> {
     }
     final ins = await db.list('inspections', where: {'hive_id': widget.hiveId}, orderKey: 'inspected_at');
     final feed = await db.list('feedings', where: {'hive_id': widget.hiveId}, orderKey: 'fed_on');
+    final apiaryId = hive?['apiary_id'] as String?;
+    final treat = apiaryId == null
+        ? <Map<String, dynamic>>[]
+        : (await db.list('treatments', where: {'apiary_id': apiaryId}, orderKey: 'treated_on'))
+            .where((t) => t['hive_id'] == null || t['hive_id'] == widget.hiveId)
+            .toList();
     if (!mounted) return;
     setState(() {
       _hive = hive;
       _typeName = typeName;
       _inspections = ins.reversed.toList();
       _feedings = feed.reversed.toList();
+      _treatments = treat.reversed.toList();
       _loaded = true;
     });
   }
@@ -166,6 +175,22 @@ class _HiveScreenState extends State<HiveScreen> {
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+          child: Text('Leczenia', style: theme.textTheme.titleMedium),
+        ),
+        if (_treatments.isEmpty) const ListTile(title: Text('Brak leczeń.')),
+        for (final t in _treatments.take(5))
+          ListTile(
+            leading: const Icon(Icons.medication_outlined),
+            title: Text('${t['product'] ?? ''} · ${t['treated_on'] ?? ''}'),
+            subtitle: Text([
+              if (t['hive_id'] == null) 'cała pasieka',
+              '${t['dose'] ?? ''}',
+              'karencja ${t['withdrawal_days'] ?? 0} dni',
+            ].where((e) => e.isNotEmpty).join(' · ')),
+            onTap: () => _open(TreatmentForm(apiaryId: h['apiary_id'] as String, hive: t['hive_id'] == null ? null : h, treatment: t)),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: Text('Przeglądy', style: theme.textTheme.titleMedium),
         ),
         if (_inspections.isEmpty) const ListTile(title: Text('Brak przeglądów.')),
@@ -200,6 +225,16 @@ class _HiveScreenState extends State<HiveScreen> {
                   icon: const Icon(Icons.water_drop_outlined, size: 26),
                   label: const Text('Karmienie', style: TextStyle(fontSize: 18)),
                 ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              height: 64,
+              width: 64,
+              child: FilledButton.tonal(
+                style: FilledButton.styleFrom(padding: EdgeInsets.zero),
+                onPressed: () => _open(TreatmentForm(apiaryId: h['apiary_id'] as String, hive: h)),
+                child: const Icon(Icons.medication_outlined, size: 28),
               ),
             ),
           ]),
