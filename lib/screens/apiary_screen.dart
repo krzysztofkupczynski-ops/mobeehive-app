@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../db.dart';
+import '../feeding.dart';
 import '../sync.dart';
+import 'feeding_form.dart';
 import 'forms.dart';
 import 'hive_screen.dart';
 
@@ -17,6 +19,7 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
   Map<String, dynamic>? _apiary;
   List<Map<String, dynamic>> _hives = [];
   final Map<String, Map<String, dynamic>> _lastInspection = {};
+  List<SeasonTotal> _feedTotals = [];
 
   @override
   void initState() {
@@ -45,8 +48,10 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
       final ins = await db.list('inspections', where: {'hive_id': h['id'] as String}, orderKey: 'inspected_at');
       if (ins.isNotEmpty) _lastInspection[h['id'] as String] = ins.last;
     }
+    final feedings = await db.list('feedings', where: {'apiary_id': widget.apiaryId});
     if (!mounted) return;
     setState(() {
+      _feedTotals = seasonTotals(feedings);
       _apiary = apiary;
       _hives = hives;
     });
@@ -105,10 +110,24 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
           ),
         ],
       ),
-      body: _hives.isEmpty
+      body: Column(children: [
+        if (_feedTotals.isNotEmpty)
+          Card(
+            margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: ListTile(
+              leading: const Icon(Icons.water_drop_outlined),
+              title: Text('Podkarmianie: ${_feedTotals.first.season}'),
+              subtitle: Text([
+                for (final t in _feedTotals.skip(1).take(2)) '${t.season}: ${t.amount}',
+              ].join(' · ')),
+              trailing: Text(_feedTotals.first.amount, style: Theme.of(context).textTheme.titleMedium),
+            ),
+          ),
+        Expanded(
+          child: _hives.isEmpty
           ? const Center(child: Text('Dodaj pierwszy ul przyciskiem poniżej.'))
           : GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 120, mainAxisSpacing: 10, crossAxisSpacing: 10),
               itemCount: _hives.length,
               itemBuilder: (context, i) {
@@ -133,10 +152,35 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
                 );
               },
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _open(HiveForm(apiaryId: widget.apiaryId)),
-        icon: const Icon(Icons.add),
-        label: const Text('Dodaj ul'),
+        ),
+      ]),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Row(children: [
+            Expanded(
+              child: SizedBox(
+                height: 64,
+                child: FilledButton.icon(
+                  onPressed: () => _open(HiveForm(apiaryId: widget.apiaryId)),
+                  icon: const Icon(Icons.add, size: 26),
+                  label: const Text('Dodaj ul', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 64,
+                child: FilledButton.tonalIcon(
+                  onPressed: _hives.isEmpty ? null : () => _open(FeedingForm(apiaryId: widget.apiaryId)),
+                  icon: const Icon(Icons.water_drop_outlined, size: 26),
+                  label: const Text('Karmienie', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }

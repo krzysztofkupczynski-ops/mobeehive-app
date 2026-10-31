@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../db.dart';
+import '../feeding.dart';
 import '../sync.dart';
+import 'feeding_form.dart';
 import 'forms.dart';
 import 'inspection_form.dart';
 
@@ -22,6 +24,7 @@ class _HiveScreenState extends State<HiveScreen> {
   Map<String, dynamic>? _hive;
   String? _typeName;
   List<Map<String, dynamic>> _inspections = [];
+  List<Map<String, dynamic>> _feedings = [];
   bool _loaded = false;
 
   @override
@@ -45,11 +48,13 @@ class _HiveScreenState extends State<HiveScreen> {
       typeName = (await db.get('hive_types', hive!['hive_type_id'] as String))?['name'] as String?;
     }
     final ins = await db.list('inspections', where: {'hive_id': widget.hiveId}, orderKey: 'inspected_at');
+    final feed = await db.list('feedings', where: {'hive_id': widget.hiveId}, orderKey: 'fed_on');
     if (!mounted) return;
     setState(() {
       _hive = hive;
       _typeName = typeName;
       _inspections = ins.reversed.toList();
+      _feedings = feed.reversed.toList();
       _loaded = true;
     });
   }
@@ -121,7 +126,7 @@ class _HiveScreenState extends State<HiveScreen> {
           ),
         ],
       ),
-      body: ListView(padding: const EdgeInsets.only(bottom: 96), children: [
+      body: ListView(padding: const EdgeInsets.only(bottom: 16), children: [
         Card(
           margin: const EdgeInsets.all(12),
           child: Padding(
@@ -136,6 +141,31 @@ class _HiveScreenState extends State<HiveScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Text('Podkarmianie', style: theme.textTheme.titleMedium),
+        ),
+        if (_feedings.isEmpty) const ListTile(title: Text('Brak wpisów.')),
+        for (final t in seasonTotals(_feedings))
+          ListTile(
+            leading: Icon(t.season.startsWith('Jesień') ? Icons.eco_outlined : Icons.local_florist_outlined),
+            title: Text(t.season),
+            trailing: Text(t.amount, style: theme.textTheme.titleMedium),
+            subtitle: Text('Podań: ${t.entries}'),
+          ),
+        if (_feedings.isNotEmpty)
+          ExpansionTile(
+            title: const Text('Wszystkie wpisy'),
+            children: [
+              for (final f in _feedings)
+                ListTile(
+                  dense: true,
+                  title: Text('${f['fed_on']} · ${f['feed_type'] ?? ''}'),
+                  trailing: Text('${fmtAmount(num.tryParse('${f['amount']}') ?? 0)} ${f['unit'] ?? 'kg'}'),
+                  onTap: () => _open(FeedingForm(apiaryId: h['apiary_id'] as String, hive: h, feeding: f)),
+                ),
+            ],
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: Text('Przeglądy', style: theme.textTheme.titleMedium),
         ),
         if (_inspections.isEmpty) const ListTile(title: Text('Brak przeglądów.')),
@@ -147,10 +177,33 @@ class _HiveScreenState extends State<HiveScreen> {
             onTap: () => _open(InspectionForm(hive: h, inspection: i)),
           ),
       ]),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _open(InspectionForm(hive: h)),
-        icon: const Icon(Icons.fact_check_outlined),
-        label: const Text('Nowy przegląd'),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Row(children: [
+            Expanded(
+              child: SizedBox(
+                height: 64,
+                child: FilledButton.icon(
+                  onPressed: () => _open(InspectionForm(hive: h)),
+                  icon: const Icon(Icons.fact_check_outlined, size: 26),
+                  label: const Text('Przegląd', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 64,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => _open(FeedingForm(apiaryId: h['apiary_id'] as String, hive: h)),
+                  icon: const Icon(Icons.water_drop_outlined, size: 26),
+                  label: const Text('Karmienie', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }

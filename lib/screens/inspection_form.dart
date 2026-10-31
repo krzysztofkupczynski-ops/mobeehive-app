@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../db.dart';
+import '../widgets.dart';
 
-/// Szybki przegląd: duże przełączniki zamiast pisania, da się wypełnić jedną ręką.
+/// Szybki przegląd: duże kafelki i przyciski, da się wypełnić w rękawicach jedną ręką.
 class InspectionForm extends StatefulWidget {
   const InspectionForm({super.key, required this.hive, this.inspection});
   final Map<String, dynamic> hive;
@@ -47,35 +48,19 @@ class _InspectionFormState extends State<InspectionForm> {
     if (mounted) Navigator.pop(context, true);
   }
 
-  Widget _toggle(String key, String label, IconData icon) => FilterChip(
-        avatar: Icon(icon, size: 18),
-        label: Text(label),
-        selected: _flag(key),
-        onSelected: (v) => setState(() => _i[key] = v ? 1 : 0),
-      );
+  Widget _toggle(String key, String label, IconData icon) =>
+      BigToggle(label: label, icon: icon, value: _flag(key), onChanged: (v) => setState(() => _i[key] = v ? 1 : 0));
 
-  Widget _scale(String key, String label, List<String> hints) {
-    final v = _num(key);
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 6),
-        SegmentedButton<int>(
-          emptySelectionAllowed: true,
-          showSelectedIcon: false,
-          segments: [for (var n = 1; n <= 5; n++) ButtonSegment(value: n, label: Text('$n'))],
-          selected: v == null ? <int>{} : {v},
-          onSelectionChanged: (s) => setState(() => _i[key] = s.isEmpty ? null : s.first),
-        ),
-        Text('${hints.first} … ${hints.last}', style: Theme.of(context).textTheme.bodySmall),
-      ]),
-    );
-  }
+  Widget _scale(String key, String label, String hint) => BigChoice<int>(
+        label: label,
+        hint: hint,
+        options: [for (var n = 1; n <= 5; n++) (n, '$n')],
+        value: _num(key),
+        onChanged: (v) => setState(() => _i[key] = v),
+      );
 
   @override
   Widget build(BuildContext context) {
-    final cells = _num('queen_cells') ?? 0;
     return Scaffold(
       appBar: AppBar(
         title: Text('Przegląd – ul ${widget.hive['number'] ?? ''}'),
@@ -83,41 +68,29 @@ class _InspectionFormState extends State<InspectionForm> {
           if (widget.inspection != null) IconButton(tooltip: 'Usuń', onPressed: _delete, icon: const Icon(Icons.delete_outline)),
         ],
       ),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.event),
-          title: Text(DateFormat('EEEE, d MMMM yyyy, HH:mm', 'pl').format(_at)),
+          leading: const Icon(Icons.event, size: 28),
+          title: Text(DateFormat('EEEE, d MMMM, HH:mm', 'pl').format(_at), style: const TextStyle(fontSize: 17)),
           trailing: const Icon(Icons.edit_calendar_outlined),
           onTap: _pickDate,
         ),
         const SizedBox(height: 8),
-        Text('Matka i czerw', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 6),
-        Wrap(spacing: 8, runSpacing: 8, children: [
+        BigGrid(children: [
           _toggle('queen_seen', 'Matka widziana', Icons.visibility_outlined),
           _toggle('eggs', 'Jajka', Icons.egg_outlined),
           _toggle('open_brood', 'Czerw otwarty', Icons.grid_view),
           _toggle('capped_brood', 'Czerw kryty', Icons.grid_on),
         ]),
-        const SizedBox(height: 12),
-        Row(children: [
-          const Expanded(child: Text('Mateczniki')),
-          IconButton(
-            onPressed: cells > 0 ? () => setState(() => _i['queen_cells'] = cells - 1) : null,
-            icon: const Icon(Icons.remove_circle_outline),
-          ),
-          Text('$cells', style: Theme.of(context).textTheme.titleMedium),
-          IconButton(onPressed: () => setState(() => _i['queen_cells'] = cells + 1), icon: const Icon(Icons.add_circle_outline)),
-        ]),
-        _scale('strength', 'Siła rodziny', ['bardzo słaba', 'bardzo silna']),
-        _scale('stores', 'Zapasy pokarmu', ['brak', 'bardzo duże']),
-        _scale('temper', 'Łagodność', ['bardzo agresywne', 'bardzo łagodne']),
-        const SizedBox(height: 16),
-        TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Notatka'), maxLines: 4),
-        const SizedBox(height: 20),
-        FilledButton(onPressed: _save, child: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Zapisz przegląd'))),
+        BigCounter(label: 'Mateczniki', value: _num('queen_cells') ?? 0, onChanged: (v) => setState(() => _i['queen_cells'] = v.toInt())),
+        _scale('strength', 'Siła rodziny', '1 – bardzo słaba, 5 – bardzo silna'),
+        _scale('stores', 'Zapasy pokarmu', '1 – brak, 5 – bardzo duże'),
+        _scale('temper', 'Łagodność', '1 – bardzo agresywne, 5 – bardzo łagodne'),
+        const SizedBox(height: 18),
+        TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Notatka'), maxLines: 3, style: const TextStyle(fontSize: 17)),
       ]),
+      bottomNavigationBar: BigSaveBar(label: 'Zapisz przegląd', onPressed: _save),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api.dart';
 import '../db.dart';
+import '../widgets.dart';
 
 /// Formularz pasieki (nowej albo edytowanej).
 class ApiaryForm extends StatefulWidget {
@@ -42,9 +43,8 @@ class _ApiaryFormState extends State<ApiaryForm> {
         TextField(controller: _vet, decoration: const InputDecoration(labelText: 'Weterynaryjny numer identyfikacyjny')),
         const SizedBox(height: 12),
         TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Uwagi'), maxLines: 3),
-        const SizedBox(height: 20),
-        FilledButton(onPressed: _save, child: const Text('Zapisz')),
       ]),
+      bottomNavigationBar: BigSaveBar(label: 'Zapisz', onPressed: _save),
     );
   }
 }
@@ -130,12 +130,8 @@ class _HiveFormState extends State<HiveForm> {
     if (mounted) Navigator.pop(context, true);
   }
 
-  Widget _counter(String label, int value, ValueChanged<int> onChanged) => Row(children: [
-        Expanded(child: Text(label)),
-        IconButton(onPressed: value > 0 ? () => onChanged(value - 1) : null, icon: const Icon(Icons.remove_circle_outline)),
-        Text('$value', style: Theme.of(context).textTheme.titleMedium),
-        IconButton(onPressed: () => onChanged(value + 1), icon: const Icon(Icons.add_circle_outline)),
-      ]);
+  Widget _counter(String label, int value, ValueChanged<int> onChanged) =>
+      BigCounter(label: label, value: value, onChanged: (v) => onChanged(v.toInt()));
 
   @override
   Widget build(BuildContext context) {
@@ -165,9 +161,8 @@ class _HiveFormState extends State<HiveForm> {
         _counter('Nadstawki', _supers, (v) => setState(() => _supers = v)),
         const SizedBox(height: 8),
         TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Uwagi'), maxLines: 3),
-        const SizedBox(height: 20),
-        FilledButton(onPressed: _save, child: const Text('Zapisz')),
       ]),
+      bottomNavigationBar: BigSaveBar(label: 'Zapisz', onPressed: _save),
     );
   }
 }
