@@ -19,6 +19,13 @@ class _ApiaryFormState extends State<ApiaryForm> {
   late final _address = TextEditingController(text: widget.apiary?['address'] as String?);
   late final _vet = TextEditingController(text: widget.apiary?['vet_number'] as String?);
   late final _notes = TextEditingController(text: widget.apiary?['notes'] as String?);
+  late String _kind = (widget.apiary?['kind'] as String?) ?? 'stacjonarna';
+  late final _wintering = TextEditingController(text: widget.apiary?['wintering_address'] as String?);
+  late final _facilities = TextEditingController(text: widget.apiary?['facilities'] as String?);
+  late final _capacity = TextEditingController(text: widget.apiary?['capacity']?.toString());
+  late final _period = TextEditingController(text: widget.apiary?['season_period'] as String?);
+  late final _risk = TextEditingController(text: widget.apiary?['risk_notes'] as String?);
+  late final _duration = TextEditingController(text: (widget.apiary?['planned_duration'] as String?) ?? 'bezterminowo');
   late double? _lat = double.tryParse('${widget.apiary?['lat']}');
   late double? _lng = double.tryParse('${widget.apiary?['lng']}');
   bool _locating = false;
@@ -59,6 +66,13 @@ class _ApiaryFormState extends State<ApiaryForm> {
       'notes': _notes.text.trim(),
       'lat': _lat,
       'lng': _lng,
+      'kind': _kind,
+      'wintering_address': _wintering.text.trim(),
+      'facilities': _facilities.text.trim(),
+      'capacity': int.tryParse(_capacity.text.trim()),
+      'season_period': _period.text.trim(),
+      'risk_notes': _risk.text.trim(),
+      'planned_duration': _duration.text.trim(),
     });
     if (mounted) Navigator.pop(context, true);
   }
@@ -85,9 +99,53 @@ class _ApiaryFormState extends State<ApiaryForm> {
           ),
         ),
         const SizedBox(height: 12),
-        TextField(controller: _vet, decoration: const InputDecoration(labelText: 'Weterynaryjny numer identyfikacyjny')),
+        TextField(controller: _vet, decoration: const InputDecoration(labelText: 'Weterynaryjny numer identyfikacyjny (WNI)')),
         const SizedBox(height: 12),
         TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Uwagi'), maxLines: 3),
+        const SizedBox(height: 8),
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: const Text('Dane do rejestracji w PLW'),
+          subtitle: const Text('Potrzebne do wniosku o wpis pasieki do rejestru'),
+          children: [
+            BigChoice<String>(
+              label: 'Rodzaj pasieki',
+              options: const [('stacjonarna', 'Stacjonarna'), ('wędrowna', 'Wędrowna')],
+              value: _kind,
+              onChanged: (v) => setState(() => _kind = v ?? _kind),
+            ),
+            if (_kind == 'wędrowna') ...[
+              const SizedBox(height: 12),
+              TextField(controller: _wintering, decoration: const InputDecoration(labelText: 'Adres miejsca zimowania')),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: _facilities,
+              decoration: const InputDecoration(labelText: 'Opis obiektów', hintText: 'np. ule na stojakach, pracownia w budynku gospodarczym'),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _capacity,
+              decoration: const InputDecoration(labelText: 'Potencjał pasieki (maks. liczba rodzin)'),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _period,
+              decoration: const InputDecoration(labelText: 'Okres trzymania pszczół (jeśli nie cały rok)'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _risk,
+              decoration: const InputDecoration(labelText: 'Inne kwestie istotne dla oceny ryzyka'),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            TextField(controller: _duration, decoration: const InputDecoration(labelText: 'Planowany czas prowadzenia działalności')),
+            const SizedBox(height: 12),
+          ],
+        ),
       ]),
       bottomNavigationBar: BigSaveBar(label: 'Zapisz', onPressed: _save),
     );
