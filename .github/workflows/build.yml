@@ -1,0 +1,46 @@
+name: Zbuduj aplikację
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pliki platformy Android (tworzone, jeśli ich brak)
+        run: |
+          if [ ! -d android ]; then
+            flutter create --org pl.mobeehive --project-name mobeehive --platforms android .
+            git checkout -- lib pubspec.yaml analysis_options.yaml 2>/dev/null || true
+            rm -f test/widget_test.dart
+          fi
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' $M || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <application|' $M
+          sed -i 's|android:label="mobeehive"|android:label="Mobeehive"|' $M
+
+      - run: flutter pub get
+
+      - name: Analiza kodu
+        run: flutter analyze --no-fatal-infos
+
+      - name: Budowanie APK
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobeehive-apk
+          path: build/app/outputs/flutter-apk/app-release.apk

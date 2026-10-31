@@ -1,0 +1,150 @@
+import 'package:flutter/material.dart';
+
+import '../db.dart';
+import '../sync.dart';
+import 'forms.dart';
+import 'hive_screen.dart';
+
+class ApiaryScreen extends StatefulWidget {
+  const ApiaryScreen({super.key, required this.apiaryId});
+  final String apiaryId;
+
+  @override
+  State<ApiaryScreen> createState() => _ApiaryScreenState();
+}
+
+class _ApiaryScreenState extends State<ApiaryScreen> {
+  Map<String, dynamic>? _apiary;
+  List<Map<String, dynamic>> _hives = [];
+  final Map<String, Map<String, dynamic>> _lastInspection = {};
+
+  @override
+  void initState() {
+    super.initState();
+    SyncService.instance.addListener(_load);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    SyncService.instance.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final db = Db.instance;
+    final apiary = await db.get('apiaries', widget.apiaryId);
+    final hives = await db.list('hives', where: {'apiary_id': widget.apiaryId});
+    hives.sort((a, b) {
+      final na = int.tryParse('${a['number']}'), nb = int.tryParse('${b['number']}');
+      if (na != null && nb != null) return na.compareTo(nb);
+      return '${a['number']}'.compareTo('${b['number']}');
+    });
+    _lastInspection.clear();
+    for (final h in hives) {
+      final ins = await db.list('inspections', where: {'hive_id': h['id'] as String}, orderKey: 'inspected_at');
+      if (ins.isNotEmpty) _lastInspection[h['id'] as String] = ins.last;
+    }
+    if (!mounted) return;
+    setState(() {
+      _apiary = apiary;
+      _hives = hives;
+    });
+  }
+
+  Future<void> _open(Widget page) async {
+    final changed = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => page));
+    await _load();
+    if (changed == true) SyncService.instance.run();
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Usunąć pasiekę?'),
+        content: Text(_hives.isEmpty ? 'Pasieka zostanie usunięta.' : 'Pasieka ma ${_hives.length} uli – zostaną usunięte razem z nią.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Anuluj')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Usuń')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    for (final h in _hives) {
+      await Db.instance.remove('hives', h['id'] as String);
+    }
+    await Db.instance.remove('apiaries', widget.apiaryId);
+    SyncService.instance.run();
+    if (mounted) Navigator.pop(context, true);
+  }
+
+  /// Kolor kafelka: siła rodziny z ostatniego przeglądu; szary, gdy przeglądu brak lub jest starszy niż 30 dni.
+  Color _color(BuildContext context, Map<String, dynamic>? ins) {
+    final scheme = Theme.of(context).colorScheme;
+    if (ins == null) return scheme.surfaceContainerHighest;
+    final at = DateTime.tryParse('${ins['inspected_at']}');
+    if (at == null || DateTime.now().difference(at).inDays > 30) return scheme.surfaceContainerHighest;
+    final s = int.tryParse('${ins['strength']}') ?? 3;
+    return [Colors.red.shade300, Colors.orange.shade300, Colors.amber.shade300, Colors.lightGreen.shade300, Colors.green.shade400][(s - 1).clamp(0, 4)];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = _apiary;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text((a?['name'] ?? 'Pasieka') as String),
+        actions: [
+          if (a != null) IconButton(tooltip: 'Edytuj', onPressed: () => _open(ApiaryForm(apiary: a)), icon: const Icon(Icons.edit_outlined)),
+          PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'delete') _delete();
+            },
+            itemBuilder: (_) => const [PopupMenuItem(value: 'delete', child: Text('Usuń pasiekę'))],
+          ),
+        ],
+      ),
+      body: _hives.isEmpty
+          ? const Center(child: Text('Dodaj pierwszy ul przyciskiem poniżej.'))
+          : GridView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 120, mainAxisSpacing: 10, crossAxisSpacing: 10),
+              itemCount: _hives.length,
+              itemBuilder: (context, i) {
+                final h = _hives[i];
+                final ins = _lastInspection[h['id']];
+                return Material(
+                  color: _color(context, ins),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => _open(HiveScreen(hiveId: h['id'] as String)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Text('${h['number'] ?? ''}', style: Theme.of(context).textTheme.headlineSmall),
+                        if ((h['name'] ?? '').toString().isNotEmpty)
+                          Text('${h['name']}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(ins == null ? 'brak przeglądu' : _ago(ins['inspected_at']), style: Theme.of(context).textTheme.bodySmall),
+                      ]),
+                    ),
+                  ),
+                );
+              },
+            ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _open(HiveForm(apiaryId: widget.apiaryId)),
+        icon: const Icon(Icons.add),
+        label: const Text('Dodaj ul'),
+      ),
+    );
+  }
+
+  static String _ago(dynamic v) {
+    final d = DateTime.tryParse('$v');
+    if (d == null) return '';
+    final days = DateTime.now().difference(d).inDays;
+    return days == 0 ? 'dziś' : days == 1 ? 'wczoraj' : '$days dni temu';
+  }
+}

@@ -1,0 +1,27 @@
+name: mobeehive
+description: Mobeehive – aplikacja do prowadzenia pasieki.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  http: ^1.2.0
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  uuid: ^4.4.0
+  flutter_secure_storage: ^9.2.2
+  mobile_scanner: ^5.2.3
+  qr_flutter: ^4.1.0
+  intl: any
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
