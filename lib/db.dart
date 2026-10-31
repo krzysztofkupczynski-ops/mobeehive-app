@@ -14,6 +14,7 @@ class Db {
   static const tables = [
     'apiaries', 'hive_types', 'hives', 'colonies', 'queens',
     'inspections', 'treatments', 'feedings', 'tasks',
+    'hygiene', 'harvests', 'sales',
   ];
 
   late Database _db;
@@ -21,21 +22,29 @@ class Db {
 
   Future<void> open() async {
     final path = p.join(await getDatabasesPath(), 'mobeehive.db');
-    _db = await openDatabase(path, version: 1, onCreate: (db, _) async {
-      for (final t in tables) {
-        await db.execute('''CREATE TABLE $t (
-          id TEXT PRIMARY KEY,
-          apiary_id TEXT, hive_id TEXT, colony_id TEXT,
-          data TEXT NOT NULL,
-          updated_at INTEGER NOT NULL DEFAULT 0,
-          deleted INTEGER NOT NULL DEFAULT 0,
-          dirty INTEGER NOT NULL DEFAULT 0)''');
-        await db.execute('CREATE INDEX ${t}_apiary ON $t(apiary_id)');
-        await db.execute('CREATE INDEX ${t}_hive ON $t(hive_id)');
-        await db.execute('CREATE INDEX ${t}_dirty ON $t(dirty)');
-      }
-      await db.execute('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)');
-    });
+    _db = await openDatabase(
+      path,
+      version: 2,
+      onCreate: (db, _) => _createAll(db),
+      // Nowe tabele w kolejnych wersjach – tworzone, jeśli ich brak.
+      onUpgrade: (db, _, __) => _createAll(db),
+    );
+  }
+
+  static Future<void> _createAll(Database db) async {
+    for (final t in tables) {
+      await db.execute('''CREATE TABLE IF NOT EXISTS $t (
+        id TEXT PRIMARY KEY,
+        apiary_id TEXT, hive_id TEXT, colony_id TEXT,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        dirty INTEGER NOT NULL DEFAULT 0)''');
+      await db.execute('CREATE INDEX IF NOT EXISTS ${t}_apiary ON $t(apiary_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS ${t}_hive ON $t(hive_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS ${t}_dirty ON $t(dirty)');
+    }
+    await db.execute('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
   }
 
   static int now() => DateTime.now().millisecondsSinceEpoch;

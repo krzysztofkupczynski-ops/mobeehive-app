@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 
 import '../db.dart';
 import '../docs/plw_request.dart';
+import '../docs/rhd_registers.dart';
 import '../owner.dart';
 import '../widgets.dart';
 import 'owner_screen.dart';
@@ -35,17 +36,34 @@ class DocumentsScreen extends StatelessWidget {
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlwRequestScreen())),
         ),
         const _Section('Rolniczy handel detaliczny'),
-        const ListTile(
-          enabled: false,
-          leading: Icon(Icons.cleaning_services_outlined, size: 30),
-          title: Text('Ewidencja mycia i dezynfekcji pracowni'),
-          subtitle: Text('W przygotowaniu'),
+        ListTile(
+          leading: const Icon(Icons.cleaning_services_outlined, size: 30),
+          title: const Text('Rejestr mycia i dezynfekcji'),
+          subtitle: const Text('Pracownia i sprzęt, kontrola szkodników, badania wody'),
+          trailing: const Icon(Icons.picture_as_pdf_outlined),
+          onTap: () => _yearPdf(context, 'Rejestr mycia i dezynfekcji', 'rejestr-mycia', (y, o) async {
+            return buildHygieneRegister(y, await Db.instance.list('hygiene'), o);
+          }),
         ),
-        const ListTile(
-          enabled: false,
-          leading: Icon(Icons.point_of_sale_outlined, size: 30),
-          title: Text('Ewidencja sprzedaży RHD'),
-          subtitle: Text('W przygotowaniu'),
+        ListTile(
+          leading: const Icon(Icons.scale_outlined, size: 30),
+          title: const Text('Ewidencja produkcji'),
+          subtitle: const Text('Miodobrania z numerami partii'),
+          trailing: const Icon(Icons.picture_as_pdf_outlined),
+          onTap: () => _yearPdf(context, 'Ewidencja produkcji', 'ewidencja-produkcji', (y, o) async {
+            final apiaries = await Db.instance.list('apiaries');
+            return buildProductionRegister(
+                y, await Db.instance.list('harvests'), {for (final a in apiaries) '${a['id']}': '${a['name']}'}, o);
+          }),
+        ),
+        ListTile(
+          leading: const Icon(Icons.point_of_sale_outlined, size: 30),
+          title: const Text('Ewidencja sprzedaży RHD'),
+          subtitle: const Text('Z podsumowaniem limitu dla sklepów i restauracji'),
+          trailing: const Icon(Icons.picture_as_pdf_outlined),
+          onTap: () => _yearPdf(context, 'Ewidencja sprzedaży RHD', 'ewidencja-sprzedazy', (y, o) async {
+            return buildSalesRegister(y, await Db.instance.list('sales'), o);
+          }),
         ),
         const _Section('Leczenie'),
         const ListTile(
@@ -200,4 +218,27 @@ class PdfScreen extends StatelessWidget {
           allowPrinting: true,
         ),
       );
+}
+
+/// Wybór roku i podgląd PDF rejestru.
+Future<void> _yearPdf(BuildContext context, String title, String file,
+    Future<Uint8List> Function(int year, Map<String, String> owner) build) async {
+  final now = DateTime.now().year;
+  final year = await showDialog<int>(
+    context: context,
+    builder: (c) => SimpleDialog(
+      title: Text(title),
+      children: [
+        for (final y in [now, now - 1, now - 2])
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(c, y),
+            child: Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text('Rok $y', style: const TextStyle(fontSize: 18))),
+          ),
+      ],
+    ),
+  );
+  if (year == null || !context.mounted) return;
+  final bytes = await build(year, await Owner.load());
+  if (!context.mounted) return;
+  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => PdfScreen(title: '$title $year', bytes: bytes, fileName: '$file-$year.pdf')));
 }

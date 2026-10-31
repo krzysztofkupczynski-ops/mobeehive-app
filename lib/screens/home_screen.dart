@@ -6,6 +6,7 @@ import '../sync.dart';
 import '../update.dart';
 import 'apiary_screen.dart';
 import 'documents_screen.dart';
+import 'rhd_screen.dart';
 import 'forms.dart';
 import 'hive_screen.dart';
 import 'login_screen.dart';
@@ -120,6 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'logout') _logout();
+              if (v == 'rhd') Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RhdScreen()));
               if (v == 'docs') Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DocumentsScreen()));
               if (v == 'update') AppUpdater.check(context, manual: true);
             },
@@ -128,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 enabled: false,
                 child: Text('${Api.instance.user?['email'] ?? ''}\nPlan: ${premium ? 'Premium' : 'darmowy'}'),
               ),
+              const PopupMenuItem(value: 'rhd', child: Text('Pracownia RHD')),
               const PopupMenuItem(value: 'docs', child: Text('Dokumenty')),
               if (sideload) const PopupMenuItem(value: 'update', child: Text('Sprawdź aktualizacje')),
               const PopupMenuItem(value: 'logout', child: Text('Wyloguj')),
