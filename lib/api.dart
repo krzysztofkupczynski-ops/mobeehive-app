@@ -25,6 +25,8 @@ class Api {
 
   bool get loggedIn => _token != null;
 
+  Future<String?> token() async => _token;
+
   Future<void> load() async {
     _token = await _storage.read(key: 'token');
     final u = await _storage.read(key: 'user');

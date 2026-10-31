@@ -34,13 +34,59 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Ikona aplikacji
+        run: dart run flutter_launcher_icons
+
       - name: Analiza kodu
         run: flutter analyze --no-fatal-infos
 
+      - name: Wersja
+        id: ver
+        run: |
+          base=$(grep -m1 '^version:' pubspec.yaml | sed -E 's/version:\s*([^+]*).*/\1/')
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "name=$base.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
       - name: Budowanie APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release \
+            --build-number=${{ steps.ver.outputs.code }} --build-name=${{ steps.ver.outputs.name }} \
+            --dart-define=SIDELOAD=true
+
+      - name: Podpis stałym kluczem
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASS" ]; then
+            echo "::warning::Brak sekretów ANDROID_KEYSTORE_* – APK ma tymczasowy podpis i nie będzie można go zaktualizować."
+            echo "SIGNED=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > release.jks
+          SIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+          "$SIGNER" sign --ks release.jks --ks-key-alias mobeehive --ks-pass env:KEYSTORE_PASS --key-pass env:KEYSTORE_PASS "$APK"
+          "$SIGNER" verify "$APK"
+          rm release.jks
+          echo "SIGNED=1" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mobeehive-apk
+          name: mobeehive-apk-${{ steps.ver.outputs.name }}
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Wyślij na mobeehive.pl (aktualizacja w aplikacji)
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          UPDATE_URL: ${{ secrets.UPDATE_URL }}
+          UPDATE_TOKEN: ${{ secrets.UPDATE_TOKEN }}
+        run: |
+          if [ "$SIGNED" != "1" ]; then echo "::warning::APK bez stałego podpisu – nie wysyłam."; exit 0; fi
+          if [ -z "$UPDATE_URL" ] || [ -z "$UPDATE_TOKEN" ]; then echo "::warning::Brak sekretów UPDATE_URL/UPDATE_TOKEN – nie wysyłam."; exit 0; fi
+          notes=$(git log -1 --pretty=%B | grep -v -E '^(Co-Authored-By|Claude-Session):' | head -c 2000)
+          code=$(curl -sS -o resp.json -w '%{http_code}' -X POST "${UPDATE_URL%/}/apk-upload" \
+            -H "X-Mobeehive-Token: $UPDATE_TOKEN" \
+            -F "version_code=${{ steps.ver.outputs.code }}" -F "version_name=${{ steps.ver.outputs.name }}" \
+            -F "notes=$notes" -F "apk=@build/app/outputs/flutter-apk/app-release.apk")
+          if [ "$code" = "200" ]; then echo "::notice::Wysłano ${{ steps.ver.outputs.name }} na serwer"; else echo "::error::HTTP $code $(cat resp.json)"; exit 1; fi

@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.hive, size: 64, color: theme.colorScheme.primary),
+                    Center(child: Image.asset('assets/logo.png', width: 120, height: 120)),
                     const SizedBox(height: 8),
                     Text('Mobeehive', textAlign: TextAlign.center, style: theme.textTheme.headlineMedium),
                     Text('Twoja pasieka w telefonie', textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),

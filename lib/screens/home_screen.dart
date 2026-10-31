@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../db.dart';
 import '../sync.dart';
+import '../update.dart';
 import 'apiary_screen.dart';
 import 'forms.dart';
 import 'hive_screen.dart';
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     SyncService.instance.addListener(_onSync);
     _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => AppUpdater.check(context));
   }
 
   @override
@@ -117,12 +119,14 @@ class _HomeScreenState extends State<HomeScreen> {
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'logout') _logout();
+              if (v == 'update') AppUpdater.check(context, manual: true);
             },
             itemBuilder: (_) => [
               PopupMenuItem(
                 enabled: false,
                 child: Text('${Api.instance.user?['email'] ?? ''}\nPlan: ${premium ? 'Premium' : 'darmowy'}'),
               ),
+              if (sideload) const PopupMenuItem(value: 'update', child: Text('Sprawdź aktualizacje')),
               const PopupMenuItem(value: 'logout', child: Text('Wyloguj')),
             ],
           ),
