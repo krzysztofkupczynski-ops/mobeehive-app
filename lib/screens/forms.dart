@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../api.dart';
 import '../db.dart';
@@ -18,6 +19,35 @@ class _ApiaryFormState extends State<ApiaryForm> {
   late final _address = TextEditingController(text: widget.apiary?['address'] as String?);
   late final _vet = TextEditingController(text: widget.apiary?['vet_number'] as String?);
   late final _notes = TextEditingController(text: widget.apiary?['notes'] as String?);
+  late double? _lat = double.tryParse('${widget.apiary?['lat']}');
+  late double? _lng = double.tryParse('${widget.apiary?['lng']}');
+  bool _locating = false;
+
+  Future<void> _locate() async {
+    setState(() => _locating = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) throw 'Włącz lokalizację w telefonie.';
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        throw 'Aplikacja nie ma zgody na lokalizację – możesz ją dać w ustawieniach telefonu.';
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 30)),
+      );
+      setState(() {
+        // 4 miejsca po przecinku (ok. 10 m) – wystarczy dla pasieki i pogody.
+        _lat = double.parse(pos.latitude.toStringAsFixed(4));
+        _lng = double.parse(pos.longitude.toStringAsFixed(4));
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is String ? e : 'Nie udało się ustalić lokalizacji.')));
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
 
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) return;
@@ -27,6 +57,8 @@ class _ApiaryFormState extends State<ApiaryForm> {
       'address': _address.text.trim(),
       'vet_number': _vet.text.trim(),
       'notes': _notes.text.trim(),
+      'lat': _lat,
+      'lng': _lng,
     });
     if (mounted) Navigator.pop(context, true);
   }
@@ -39,6 +71,19 @@ class _ApiaryFormState extends State<ApiaryForm> {
         TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nazwa *'), autofocus: widget.apiary == null),
         const SizedBox(height: 12),
         TextField(controller: _address, decoration: const InputDecoration(labelText: 'Adres lub miejsce')),
+        const SizedBox(height: 12),
+        Card(
+          margin: EdgeInsets.zero,
+          child: ListTile(
+            leading: const Icon(Icons.my_location, size: 28),
+            title: Text(_lat == null ? 'Lokalizacja nieustawiona' : '${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)}'),
+            subtitle: const Text('Potrzebna do prognozy pogody. Stań przy pasiece i naciśnij.'),
+            trailing: _locating
+                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.gps_fixed),
+            onTap: _locating ? null : _locate,
+          ),
+        ),
         const SizedBox(height: 12),
         TextField(controller: _vet, decoration: const InputDecoration(labelText: 'Weterynaryjny numer identyfikacyjny')),
         const SizedBox(height: 12),

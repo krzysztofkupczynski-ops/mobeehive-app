@@ -6,6 +6,7 @@ import '../sync.dart';
 import 'feeding_form.dart';
 import 'forms.dart';
 import 'hive_screen.dart';
+import 'weather_screen.dart';
 
 class ApiaryScreen extends StatefulWidget {
   const ApiaryScreen({super.key, required this.apiaryId});
@@ -111,6 +112,7 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
         ],
       ),
       body: Column(children: [
+        if (_apiary != null) WeatherCard(apiary: _apiary!),
         if (_feedTotals.isNotEmpty)
           Card(
             margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),

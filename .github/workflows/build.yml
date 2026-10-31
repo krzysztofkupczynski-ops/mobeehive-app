@@ -30,6 +30,7 @@ jobs:
           fi
           M=android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' $M || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <application|' $M
+          grep -q 'ACCESS_COARSE_LOCATION' $M || sed -i 's|<application|<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <application|' $M
           sed -i 's|android:label="mobeehive"|android:label="Mobeehive"|' $M
 
       - run: flutter pub get
