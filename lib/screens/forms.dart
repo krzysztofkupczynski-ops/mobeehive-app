@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../api.dart';
 import '../db.dart';
+import '../location.dart';
 import '../widgets.dart';
 
 /// Formularz pasieki (nowej albo edytowanej).
@@ -28,25 +29,31 @@ class _ApiaryFormState extends State<ApiaryForm> {
   late final _duration = TextEditingController(text: (widget.apiary?['planned_duration'] as String?) ?? 'bezterminowo');
   late double? _lat = double.tryParse('${widget.apiary?['lat']}');
   late double? _lng = double.tryParse('${widget.apiary?['lng']}');
+  late Map<String, dynamic> _region = {
+    for (final k in ['voivodeship', 'county', 'commune', 'teryt']) k: widget.apiary?[k],
+  };
   bool _locating = false;
+  bool _regionLoading = false;
 
-  Future<void> _locate() async {
+  Future<void> _setPoint(LatLng p) async {
+    setState(() {
+      _lat = double.parse(p.latitude.toStringAsFixed(5));
+      _lng = double.parse(p.longitude.toStringAsFixed(5));
+      _region = {};
+      _regionLoading = true;
+    });
+    final r = await resolveRegion({'lat': _lat, 'lng': _lng}, save: false);
+    if (!mounted) return;
+    setState(() {
+      _regionLoading = false;
+      if (r != null) _region = {for (final k in ['voivodeship', 'county', 'commune', 'teryt']) k: r[k]};
+    });
+  }
+
+  Future<void> _here() async {
     setState(() => _locating = true);
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) throw 'Włącz lokalizację w telefonie.';
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-        throw 'Aplikacja nie ma zgody na lokalizację – możesz ją dać w ustawieniach telefonu.';
-      }
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 30)),
-      );
-      setState(() {
-        // 4 miejsca po przecinku (ok. 10 m) – wystarczy dla pasieki i pogody.
-        _lat = double.parse(pos.latitude.toStringAsFixed(4));
-        _lng = double.parse(pos.longitude.toStringAsFixed(4));
-      });
+      await _setPoint(await currentPosition());
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is String ? e : 'Nie udało się ustalić lokalizacji.')));
@@ -54,6 +61,13 @@ class _ApiaryFormState extends State<ApiaryForm> {
     } finally {
       if (mounted) setState(() => _locating = false);
     }
+  }
+
+  Future<void> _onMap() async {
+    final p = await Navigator.of(context).push<LatLng>(MaterialPageRoute(
+      builder: (_) => MapPickerScreen(initial: _lat == null ? null : LatLng(_lat!, _lng!)),
+    ));
+    if (p != null) await _setPoint(p);
   }
 
   Future<void> _save() async {
@@ -66,6 +80,7 @@ class _ApiaryFormState extends State<ApiaryForm> {
       'notes': _notes.text.trim(),
       'lat': _lat,
       'lng': _lng,
+      ..._region,
       'kind': _kind,
       'wintering_address': _wintering.text.trim(),
       'facilities': _facilities.text.trim(),
@@ -88,14 +103,51 @@ class _ApiaryFormState extends State<ApiaryForm> {
         const SizedBox(height: 12),
         Card(
           margin: EdgeInsets.zero,
-          child: ListTile(
-            leading: const Icon(Icons.my_location, size: 28),
-            title: Text(_lat == null ? 'Lokalizacja nieustawiona' : '${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)}'),
-            subtitle: const Text('Potrzebna do prognozy pogody. Stań przy pasiece i naciśnij.'),
-            trailing: _locating
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.gps_fixed),
-            onTap: _locating ? null : _locate,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Miejsce pasieki', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(_lat == null ? 'Nieustawione – potrzebne do pogody i dokumentów.' : '${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)}'),
+              if (_regionLoading)
+                const Padding(padding: EdgeInsets.only(top: 6), child: Text('Ustalam powiat…'))
+              else if ('${_region['county'] ?? ''}'.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(regionLabel(_region), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                )
+              else if (_lat != null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Text('Powiat ustalimy, gdy będzie połączenie z internetem.'),
+                ),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 56,
+                    child: FilledButton.icon(
+                      onPressed: _locating ? null : _here,
+                      icon: _locating
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.my_location),
+                      label: const Text('Jestem tutaj', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 56,
+                    child: FilledButton.tonalIcon(
+                      onPressed: _onMap,
+                      icon: const Icon(Icons.map_outlined),
+                      label: const Text('Na mapie', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ),
+              ]),
+            ]),
           ),
         ),
         const SizedBox(height: 12),

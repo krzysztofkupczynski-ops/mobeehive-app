@@ -5,6 +5,7 @@ import '../db.dart';
 import '../feeding.dart' show fmtAmount;
 import '../owner.dart';
 import '../rhd.dart';
+import '../settings.dart';
 import '../widgets.dart';
 
 final _dayFmt = DateFormat('yyyy-MM-dd');
@@ -321,7 +322,7 @@ class _SaleFormState extends State<SaleForm> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Przy sprzedaży do sklepu lub restauracji podaj nazwę i adres odbiorcy.')));
       return;
     }
-    if (business) {
+    if (business && Settings.sales == SalesMode.rhd) {
       final others = _sales.where((s) => s['id'] != _e['id']).toList();
       final used = salesTotals(others, _on.year).business;
       if (used + _qty > rhdBusinessLimitKg) {

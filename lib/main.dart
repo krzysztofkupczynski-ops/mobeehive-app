@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'api.dart';
 import 'db.dart';
+import 'settings.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'sync.dart';
@@ -12,6 +13,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pl');
   await Db.instance.open();
+  await Settings.load();
   await Api.instance.load();
   runApp(const MobeehiveApp());
   SyncService.instance.run();

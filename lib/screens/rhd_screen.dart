@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../db.dart';
 import '../feeding.dart' show fmtAmount;
 import '../rhd.dart';
+import '../settings.dart';
 import '../sync.dart';
 import 'rhd_forms.dart';
 
@@ -116,7 +117,8 @@ class _RhdScreenState extends State<RhdScreen> with SingleTickerProviderStateMix
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Sprzedaż w $year r.', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text('Konsumenci: ${fmtAmount(t.consumers)} kg (bez limitu)'),
+            Text('Konsumenci: ${fmtAmount(t.consumers)} kg'),
+            if (Settings.sales == SalesMode.rhd) ...[
             const SizedBox(height: 4),
             Text('Sklepy i restauracje: ${fmtAmount(t.business)} z ${fmtAmount(rhdBusinessLimitKg)} kg'),
             const SizedBox(height: 8),
@@ -128,6 +130,8 @@ class _RhdScreenState extends State<RhdScreen> with SingleTickerProviderStateMix
                 color: share >= 0.9 ? scheme.error : share >= 0.75 ? Colors.orange : scheme.primary,
               ),
             ),
+            ] else
+              Text('Sklepy i restauracje: ${fmtAmount(t.business)} kg'),
           ]),
         ),
       ),
@@ -156,7 +160,7 @@ class _RhdScreenState extends State<RhdScreen> with SingleTickerProviderStateMix
     ][_tabs.index];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pracownia RHD'),
+        title: Text(Settings.sales.workshop),
         bottom: TabBar(controller: _tabs, tabs: const [Tab(text: 'Higiena'), Tab(text: 'Produkcja'), Tab(text: 'Sprzedaż')]),
       ),
       body: TabBarView(controller: _tabs, children: [_hygieneTab(), _harvestTab(), _salesTab()]),

@@ -91,6 +91,9 @@ class Api {
   Future<Map<String, dynamic>> weather(double lat, double lon) =>
       _get('/weather?lat=${lat.toStringAsFixed(4)}&lon=${lon.toStringAsFixed(4)}');
 
+  Future<Map<String, dynamic>> region(double lat, double lon) =>
+      _get('/region?lat=${lat.toStringAsFixed(5)}&lon=${lon.toStringAsFixed(5)}');
+
   Future<Map<String, dynamic>> sync(int since, Map<String, List<Map<String, dynamic>>> changes) =>
       _post('/sync', {'since': since, 'changes': changes});
 

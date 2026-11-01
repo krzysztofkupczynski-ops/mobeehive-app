@@ -8,6 +8,7 @@ import '../docs/plw_request.dart';
 import '../docs/rhd_registers.dart';
 import '../docs/treatment_register.dart';
 import '../owner.dart';
+import '../settings.dart';
 import '../widgets.dart';
 import 'owner_screen.dart';
 
@@ -36,7 +37,8 @@ class DocumentsScreen extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlwRequestScreen())),
         ),
-        const _Section('Rolniczy handel detaliczny'),
+        if (Settings.sales != SalesMode.none) ...[
+        _Section(Settings.sales == SalesMode.rhd ? 'Rolniczy handel detaliczny' : 'Sprzedaż bezpośrednia'),
         ListTile(
           leading: const Icon(Icons.cleaning_services_outlined, size: 30),
           title: const Text('Rejestr mycia i dezynfekcji'),
@@ -59,13 +61,14 @@ class DocumentsScreen extends StatelessWidget {
         ),
         ListTile(
           leading: const Icon(Icons.point_of_sale_outlined, size: 30),
-          title: const Text('Ewidencja sprzedaży RHD'),
-          subtitle: const Text('Z podsumowaniem limitu dla sklepów i restauracji'),
+          title: Text(Settings.sales == SalesMode.rhd ? 'Ewidencja sprzedaży RHD' : 'Ewidencja sprzedaży SB'),
+          subtitle: Text(Settings.sales == SalesMode.rhd ? 'Z podsumowaniem limitu dla sklepów i restauracji' : 'Z podsumowaniem roku'),
           trailing: const Icon(Icons.picture_as_pdf_outlined),
-          onTap: () => _yearPdf(context, 'Ewidencja sprzedaży RHD', 'ewidencja-sprzedazy', (y, o) async {
-            return buildSalesRegister(y, await Db.instance.list('sales'), o);
+          onTap: () => _yearPdf(context, Settings.sales == SalesMode.rhd ? 'Ewidencja sprzedaży RHD' : 'Ewidencja sprzedaży SB', 'ewidencja-sprzedazy', (y, o) async {
+            return buildSalesRegister(y, await Db.instance.list('sales'), o, rhd: Settings.sales == SalesMode.rhd);
           }),
         ),
+        ],
         const _Section('Leczenie'),
         ListTile(
           leading: const Icon(Icons.medication_outlined, size: 30),

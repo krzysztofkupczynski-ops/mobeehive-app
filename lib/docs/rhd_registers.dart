@@ -119,12 +119,12 @@ Future<Uint8List> buildProductionRegister(
 }
 
 /// Ewidencja sprzedaży RHD – kolejny numer w roku, data, produkt, ilość; przy firmach nazwa i adres odbiorcy.
-Future<Uint8List> buildSalesRegister(int year, List<Map<String, dynamic>> sales, Map<String, String> owner) {
+Future<Uint8List> buildSalesRegister(int year, List<Map<String, dynamic>> sales, Map<String, String> owner, {bool rhd = true}) {
   final rows = _ofYear(sales, 'sold_on', year);
   final t = salesTotals(rows, year);
   final money = rows.fold<double>(0, (a, s) => a + qty(s['amount']));
-  return _render('Ewidencja sprzedaży RHD', (k) => [
-        _head(k, 'Ewidencja sprzedaży – rolniczy handel detaliczny', year, owner),
+  return _render(rhd ? 'Ewidencja sprzedaży RHD' : 'Ewidencja sprzedaży SB', (k) => [
+        _head(k, rhd ? 'Ewidencja sprzedaży – rolniczy handel detaliczny' : 'Ewidencja sprzedaży – sprzedaż bezpośrednia', year, owner),
         k.grid(
           ['Lp.', 'Data', 'Produkt', 'Nr partii', 'Ilość [kg]', 'Odbiorca', 'Nazwa i adres odbiorcy (sklep / restauracja)', 'Kwota [zł]', 'Miejsce'],
           [
@@ -156,8 +156,8 @@ Future<Uint8List> buildSalesRegister(int year, List<Map<String, dynamic>> sales,
         ),
         k.h2('Podsumowanie roku'),
         pw.Text('Sprzedaż konsumentom końcowym: ${fmtAmount(t.consumers)} kg'),
-        pw.Text('Sprzedaż do zakładów (sklepy, restauracje): ${fmtAmount(t.business)} kg '
-            '(limit RHD dla miodu: ${fmtAmount(rhdBusinessLimitKg)} kg/rok)'),
+        pw.Text('Sprzedaż do zakładów (sklepy, restauracje): ${fmtAmount(t.business)} kg'
+            '${rhd ? ' (limit RHD dla miodu: ${fmtAmount(rhdBusinessLimitKg)} kg/rok)' : ''}'),
         pw.Text('Razem: ${fmtAmount(t.consumers + t.business)} kg${money > 0 ? ', przychód ${fmtAmount(money)} zł' : ''}'),
       ]);
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../db.dart';
 import '../feeding.dart';
+import '../location.dart';
 import '../sync.dart';
 import 'feeding_form.dart';
 import 'forms.dart';
@@ -22,6 +23,7 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
   List<Map<String, dynamic>> _hives = [];
   final Map<String, Map<String, dynamic>> _lastInspection = {};
   List<SeasonTotal> _feedTotals = [];
+  bool _regionTried = false;
 
   @override
   void initState() {
@@ -51,6 +53,16 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
       if (ins.isNotEmpty) _lastInspection[h['id'] as String] = ins.last;
     }
     final feedings = await db.list('feedings', where: {'apiary_id': widget.apiaryId});
+    // Starsze pasieki bez powiatu – uzupełnij w tle, gdy jest połączenie.
+    if (apiary != null && apiary['lat'] != null && '${apiary['county'] ?? ''}'.isEmpty && !_regionTried) {
+      _regionTried = true;
+      resolveRegion(apiary).then((r) {
+        if (r != null) {
+          SyncService.instance.run();
+          _load();
+        }
+      });
+    }
     if (!mounted) return;
     setState(() {
       _feedTotals = seasonTotals(feedings);
@@ -113,6 +125,15 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
         ],
       ),
       body: Column(children: [
+        if (_apiary != null && '${_apiary!['county'] ?? ''}'.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Row(children: [
+              const Icon(Icons.place_outlined, size: 18),
+              const SizedBox(width: 6),
+              Expanded(child: Text(regionLabel(_apiary!))),
+            ]),
+          ),
         if (_apiary != null) WeatherCard(apiary: _apiary!),
         if (_feedTotals.isNotEmpty)
           Card(
