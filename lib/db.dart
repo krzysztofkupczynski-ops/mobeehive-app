@@ -139,6 +139,8 @@ class Db {
     return r.isEmpty ? null : r.first['value'] as String?;
   }
 
+  Future<void> deleteMeta(String key) => _db.delete('meta', where: 'key = ?', whereArgs: [key]);
+
   Future<void> setMeta(String key, String value) =>
       _db.insert('meta', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
 

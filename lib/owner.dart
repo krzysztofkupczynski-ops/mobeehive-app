@@ -13,6 +13,7 @@ class Owner {
     ('postcode', 'Kod pocztowy'),
     ('post', 'Poczta'),
     ('pesel', 'PESEL (NIP w przypadku firmy)'),
+    ('ep', 'Numer gospodarstwa z ARiMR (EP) lub KRS'),
     ('phone', 'Telefon'),
     ('email', 'E-mail / strona / adres do e-Doręczeń'),
     ('delivery', 'Adres do doręczeń (jeśli inny)'),

@@ -94,6 +94,13 @@ class Api {
   Future<Map<String, dynamic>> region(double lat, double lon) =>
       _get('/region?lat=${lat.toStringAsFixed(5)}&lon=${lon.toStringAsFixed(5)}');
 
+  Future<Map<String, dynamic>> saveSettings(Map<String, dynamic> settings) => _post('/settings', settings);
+
+  Future<Map<String, dynamic>> piw({String? teryt, String? county}) => _get(
+      '/piw?teryt=${Uri.encodeQueryComponent(teryt ?? '')}&county=${Uri.encodeQueryComponent(county ?? '')}');
+
+  Future<void> deleteAccount() => _post('/account/delete', {});
+
   Future<Map<String, dynamic>> sync(int since, Map<String, List<Map<String, dynamic>>> changes) =>
       _post('/sync', {'since': since, 'changes': changes});
 

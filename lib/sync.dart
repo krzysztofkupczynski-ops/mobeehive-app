@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'api.dart';
 import 'db.dart';
+import 'settings.dart';
 
 /// Wysyła lokalne zmiany i pobiera zmiany z serwera. Działa w tle; brak zasięgu nie jest błędem.
 class SyncService extends ChangeNotifier {
@@ -62,6 +63,7 @@ class SyncService extends ChangeNotifier {
         await db.setMeta('cursor', '$since');
         if (res['account'] is Map) {
           await Api.instance.updateAccount(Map<String, dynamic>.from(res['account'] as Map));
+          await Settings.applyAccount(Map<String, dynamic>.from(res['account'] as Map));
         }
         hasMore = res['has_more'] == true;
         first = false;

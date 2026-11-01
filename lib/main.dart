@@ -13,8 +13,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pl');
   await Db.instance.open();
-  await Settings.load();
   await Api.instance.load();
+  await Settings.load();
   runApp(const MobeehiveApp());
   SyncService.instance.run();
 }
