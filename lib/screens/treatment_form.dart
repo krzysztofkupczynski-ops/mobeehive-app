@@ -41,6 +41,8 @@ class _TreatmentFormState extends State<TreatmentForm> {
   late final _by = TextEditingController(text: _t['performed_by'] as String?);
   late final _notes = TextEditingController(text: _t['notes'] as String?);
   List<Map<String, dynamic>> _hives = [];
+  /// Zaznaczone ule przy leczeniu z poziomu pasieki (domyślnie wszystkie).
+  Set<String> _selected = {};
 
   bool get _whole => widget.hive == null && (widget.treatment == null || widget.treatment!['hive_id'] == null);
 
@@ -53,7 +55,10 @@ class _TreatmentFormState extends State<TreatmentForm> {
       final owner = await Owner.load();
       if (!mounted) return;
       setState(() {
-        _hives = hives;
+        _hives = hives
+          ..sort((a, b) => (int.tryParse('${a['number']}') ?? 0).compareTo(int.tryParse('${b['number']}') ?? 0));
+        final saved = (_t['hive_ids'] as String?)?.split(',').where((e) => e.isNotEmpty).toSet();
+        _selected = saved ?? {for (final h in hives) '${h['id']}'};
         if (widget.treatment == null) {
           final p = (last ?? '').split('|');
           if (p.length == 3) {
@@ -67,14 +72,20 @@ class _TreatmentFormState extends State<TreatmentForm> {
     }();
   }
 
+  List<Map<String, dynamic>> get _chosen => _hives.where((h) => _selected.contains('${h['id']}')).toList();
+
   String _hivesDesc() {
     if (!_whole) return 'ul ${widget.hive?['number'] ?? _t['hives_desc'] ?? ''}';
-    final nums = _hives.map((h) => '${h['number'] ?? ''}').where((n) => n.isNotEmpty).toList()
-      ..sort((a, b) => (int.tryParse(a) ?? 0).compareTo(int.tryParse(b) ?? 0));
-    return 'wszystkie ule (${_hives.length})${nums.isEmpty ? '' : ': ${nums.join(', ')}'}';
+    final nums = _chosen.map((h) => '${h['number'] ?? ''}').where((n) => n.isNotEmpty).toList();
+    final all = _chosen.length == _hives.length;
+    return '${all ? 'wszystkie ule' : 'ule'} (${_chosen.length})${nums.isEmpty ? '' : ': ${nums.join(', ')}'}';
   }
 
   Future<void> _save() async {
+    if (_whole && _hives.isNotEmpty && _selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Zaznacz leczone ule.')));
+      return;
+    }
     final product = _product == 'Inny' ? _otherProduct.text.trim() : (_product ?? '');
     if (product.isEmpty || _dose.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Podaj preparat i podaną ilość.')));
@@ -85,6 +96,7 @@ class _TreatmentFormState extends State<TreatmentForm> {
       'apiary_id': widget.apiaryId,
       'hive_id': _whole ? null : (widget.hive?['id'] ?? _t['hive_id']),
       'hives_desc': _hivesDesc(),
+      'hive_ids': _whole ? _chosen.map((h) => '${h['id']}').join(',') : null,
       'treated_on': _fmt.format(_on),
       'ended_on': _end == null ? null : _fmt.format(_end!),
       'product': product,
@@ -139,7 +151,48 @@ class _TreatmentFormState extends State<TreatmentForm> {
             if (d != null) setState(() => _end = d);
           },
         ),
-        if (_whole) Text('Dotyczy: ${_hivesDesc()}', style: const TextStyle(fontSize: 16)),
+        if (_whole && _hives.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            const Expanded(child: Text('Leczone ule', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600))),
+            TextButton(
+              onPressed: () => setState(() => _selected = _selected.length == _hives.length ? {} : {for (final h in _hives) '${h['id']}'}),
+              child: Text(_selected.length == _hives.length ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'),
+            ),
+          ]),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final h in _hives)
+              SizedBox(
+                width: 72,
+                height: 60,
+                child: Material(
+                  color: _selected.contains('${h['id']}')
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => setState(() {
+                      final id = '${h['id']}';
+                      _selected.contains(id) ? _selected.remove(id) : _selected.add(id);
+                    }),
+                    child: Center(
+                      child: Text('${h['number'] ?? '?'}',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: _selected.contains('${h['id']}')
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.onSurface,
+                          )),
+                    ),
+                  ),
+                ),
+              ),
+          ]),
+          const SizedBox(height: 6),
+          Text('Dotyczy: ${_hivesDesc()}'),
+        ],
         BigChoice<String>(
           label: 'Preparat',
           options: [for (final p in treatmentProducts) (p, p)],

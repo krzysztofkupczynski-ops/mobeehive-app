@@ -12,7 +12,9 @@ import '../settings.dart';
 import 'forms.dart';
 import 'hive_screen.dart';
 import 'login_screen.dart';
+import 'rhd_forms.dart';
 import 'scan_screen.dart';
+import 'treatment_form.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -104,6 +106,80 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
   }
 
+  Future<void> _quick(Widget page) async {
+    final changed = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => page));
+    await _load();
+    if (changed == true) SyncService.instance.run();
+  }
+
+  /// Leczenie: przy jednej pasiece od razu formularz, przy kilku – wybór pasieki dużymi przyciskami.
+  Future<void> _treatment() async {
+    String? id = _apiaries.length == 1 ? _apiaries.first['id'] as String : null;
+    id ??= await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text('Leczenie – która pasieka?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          ),
+          for (final a in _apiaries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: SizedBox(
+                height: 64,
+                child: FilledButton.tonal(
+                  onPressed: () => Navigator.pop(c, a['id'] as String),
+                  child: Row(children: [
+                    const Icon(Icons.location_on_outlined),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text('${a['name']}', style: const TextStyle(fontSize: 18))),
+                    Text('${_hiveCounts[a['id']] ?? 0} uli'),
+                  ]),
+                ),
+              ),
+            ),
+        ]),
+      ),
+    );
+    if (id != null && mounted) await _quick(TreatmentForm(apiaryId: id));
+  }
+
+  Widget _action(String label, IconData icon, VoidCallback onTap) => Expanded(
+        child: SizedBox(
+          height: 84,
+          child: FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            onPressed: onTap,
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, size: 30),
+              const SizedBox(height: 4),
+              Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ),
+      );
+
+  Widget _actions() {
+    final selling = Settings.sales != SalesMode.none;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Row(children: [
+        _action('Leczenie', Icons.medication_outlined, _treatment),
+        if (selling) ...[
+          const SizedBox(width: 10),
+          _action('Sprzedaż', Icons.point_of_sale_outlined, () => _quick(const SaleForm())),
+          const SizedBox(width: 10),
+          _action('Dezynfekcja', Icons.cleaning_services_outlined, () => _quick(const HygieneForm())),
+        ],
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sync = SyncService.instance;
@@ -164,6 +240,11 @@ class _HomeScreenState extends State<HomeScreen> {
             : ListView(
                 padding: const EdgeInsets.only(bottom: 96),
                 children: [
+                  _actions(),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Text('Pasieki', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  ),
                   if (sync.lastError != null)
                     MaterialBanner(
                       content: Text(sync.lastError!),

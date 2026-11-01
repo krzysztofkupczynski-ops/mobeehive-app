@@ -55,7 +55,9 @@ class _HiveScreenState extends State<HiveScreen> {
     final treat = apiaryId == null
         ? <Map<String, dynamic>>[]
         : (await db.list('treatments', where: {'apiary_id': apiaryId}, orderKey: 'treated_on'))
-            .where((t) => t['hive_id'] == null || t['hive_id'] == widget.hiveId)
+            .where((t) =>
+                t['hive_id'] == widget.hiveId ||
+                (t['hive_id'] == null && ('${t['hive_ids'] ?? ''}'.isEmpty || '${t['hive_ids']}'.split(',').contains(widget.hiveId))))
             .toList();
     if (!mounted) return;
     setState(() {
