@@ -14,6 +14,7 @@ import 'hive_screen.dart';
 import 'login_screen.dart';
 import 'rhd_forms.dart';
 import 'scan_screen.dart';
+import '../tasks.dart';
 import 'treatment_form.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -26,6 +27,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _apiaries = [];
   Map<String, int> _hiveCounts = {};
+  List<Map<String, dynamic>> _tasks = [];
+  bool _allTasks = false;
   int _seenVersion = -1;
 
   @override
@@ -61,8 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final a = h['apiary_id'] as String?;
       if (a != null) counts[a] = (counts[a] ?? 0) + 1;
     }
+    final tasks = await AutoTasks.open();
     if (!mounted) return;
     setState(() {
+      _tasks = tasks;
       _apiaries = apiaries;
       _hiveCounts = counts;
     });
@@ -241,6 +246,45 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.only(bottom: 96),
                 children: [
                   _actions(),
+                  if (_tasks.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+                      child: Text('Do zrobienia (${_tasks.length})', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    ),
+                    for (final t in (_allTasks ? _tasks : _tasks.take(4)))
+                      Card(
+                        margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                        color: '${AutoTasks.dueLabel(t['due_on'])}'.startsWith('zaległe') || AutoTasks.dueLabel(t['due_on']) == 'dziś'
+                            ? Theme.of(context).colorScheme.errorContainer
+                            : null,
+                        child: ListTile(
+                          leading: IconButton(
+                            iconSize: 32,
+                            tooltip: 'Zrobione',
+                            icon: const Icon(Icons.check_box_outline_blank),
+                            onPressed: () async {
+                              await AutoTasks.done(t);
+                              _load();
+                              SyncService.instance.run();
+                            },
+                          ),
+                          title: Text('${t['title']}'),
+                          subtitle: Text(AutoTasks.dueLabel(t['due_on'])),
+                          trailing: t['hive_id'] == null ? null : const Icon(Icons.chevron_right),
+                          onTap: t['hive_id'] == null
+                              ? null
+                              : () async {
+                                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => HiveScreen(hiveId: '${t['hive_id']}')));
+                                  _load();
+                                },
+                        ),
+                      ),
+                    if (_tasks.length > 4)
+                      TextButton(
+                        onPressed: () => setState(() => _allTasks = !_allTasks),
+                        child: Text(_allTasks ? 'Pokaż mniej' : 'Pokaż wszystkie (${_tasks.length})'),
+                      ),
+                  ],
                   const Padding(
                     padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Text('Pasieki', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),

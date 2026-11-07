@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../db.dart';
 import '../owner.dart';
+import '../tasks.dart';
 import '../widgets.dart';
 
 /// Najczęściej używane preparaty – tylko podpowiedzi nazw; zawsze można wpisać inny.
@@ -91,7 +92,7 @@ class _TreatmentFormState extends State<TreatmentForm> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Podaj preparat i podaną ilość.')));
       return;
     }
-    await Db.instance.save('treatments', {
+    final savedT = await Db.instance.save('treatments', {
       ..._t,
       'apiary_id': widget.apiaryId,
       'hive_id': _whole ? null : (widget.hive?['id'] ?? _t['hive_id']),
@@ -110,6 +111,7 @@ class _TreatmentFormState extends State<TreatmentForm> {
       'performed_by': _by.text.trim(),
       'notes': _notes.text.trim(),
     });
+    await AutoTasks.fromTreatment(savedT);
     await Db.instance.setMeta('treatment_last', '${_supplier.text.trim()}|${_vet.text.trim()}|${_by.text.trim()}');
     if (mounted) Navigator.pop(context, true);
   }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'api.dart';
 import 'db.dart';
+import 'photos.dart';
 import 'settings.dart';
 
 /// Wysyła lokalne zmiany i pobiera zmiany z serwera. Działa w tle; brak zasięgu nie jest błędem.
@@ -68,6 +69,7 @@ class SyncService extends ChangeNotifier {
         hasMore = res['has_more'] == true;
         first = false;
       } while (hasMore);
+      await Photos.upload();
       lastSync = DateTime.now();
       dataVersion++;
     } on ApiException catch (e) {

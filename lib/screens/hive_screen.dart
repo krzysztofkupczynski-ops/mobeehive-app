@@ -8,6 +8,8 @@ import '../sync.dart';
 import 'feeding_form.dart';
 import 'forms.dart';
 import 'inspection_form.dart';
+import 'queens.dart';
+import '../tasks.dart';
 import 'treatment_form.dart';
 
 /// Treść kodu QR naklejanego na ul.
@@ -25,6 +27,8 @@ class _HiveScreenState extends State<HiveScreen> {
   Map<String, dynamic>? _hive;
   String? _typeName;
   List<Map<String, dynamic>> _inspections = [];
+  List<Map<String, dynamic>> _tasks = [];
+  Map<String, dynamic>? _queen;
   List<Map<String, dynamic>> _feedings = [];
   List<Map<String, dynamic>> _treatments = [];
   bool _loaded = false;
@@ -59,8 +63,12 @@ class _HiveScreenState extends State<HiveScreen> {
                 t['hive_id'] == widget.hiveId ||
                 (t['hive_id'] == null && ('${t['hive_ids'] ?? ''}'.isEmpty || '${t['hive_ids']}'.split(',').contains(widget.hiveId))))
             .toList();
+    final tasks = await AutoTasks.open(hiveId: widget.hiveId);
+    final queens = (await db.list('queens', where: {'hive_id': widget.hiveId})).where((q) => '${q['removed_on'] ?? ''}'.isEmpty).toList();
     if (!mounted) return;
     setState(() {
+      _tasks = tasks;
+      _queen = queens.isEmpty ? null : queens.last;
       _hive = hive;
       _typeName = typeName;
       _inspections = ins.reversed.toList();
@@ -146,9 +154,32 @@ class _HiveScreenState extends State<HiveScreen> {
               _fact('Typ', _typeName ?? '–'),
               _fact('Korpusy', '${h['boxes'] ?? '–'}'),
               _fact('Nadstawki', '${h['supers'] ?? '–'}'),
+              if ((int.tryParse('${h['half_supers']}') ?? 0) > 0) _fact('Półnadstawki', '${h['half_supers']}'),
               if ((h['notes'] ?? '').toString().isNotEmpty) _fact('Uwagi', '${h['notes']}'),
             ]),
           ),
+        ),
+        for (final t in _tasks)
+          Card(
+            color: theme.colorScheme.tertiaryContainer,
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: CheckboxListTile(
+              value: false,
+              title: Text('${t['title']}'),
+              subtitle: Text(AutoTasks.dueLabel(t['due_on'])),
+              onChanged: (_) async {
+                await AutoTasks.done(t);
+                _load();
+                SyncService.instance.run();
+              },
+            ),
+          ),
+        ListTile(
+          leading: QueenDot(year: int.tryParse('${_queen?['year']}'), label: '${_queen?['number'] ?? ''}'),
+          title: Text(_queen == null ? 'Matka: brak wpisu' : 'Matka ${_queen!['number'] ?? ''} · ${_queen!['year'] ?? ''}'),
+          subtitle: _queen == null ? const Text('Dodaj matkę') : Text('${_queen!['status'] ?? ''}${'${_queen!['breed'] ?? ''}'.isEmpty ? '' : ' · ${_queen!['breed']}'}'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _open(QueensScreen(hive: h)),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -264,6 +295,12 @@ class _HiveScreenState extends State<HiveScreen> {
       if (_yes(i['open_brood'])) 'czerw otwarty',
       if (_yes(i['capped_brood'])) 'czerw kryty',
       if ((int.tryParse('${i['queen_cells']}') ?? 0) > 0) 'mateczniki: ${i['queen_cells']}',
+      if (_yes(i['swarm_mood'])) 'NASTRÓJ ROJOWY',
+      if (_yes(i['no_brood'])) 'brak czerwiu',
+      if (_yes(i['no_stores'])) 'brak pokarmu',
+      if ('${i['disease'] ?? ''}'.isNotEmpty && i['disease'] != 'Brak') '${i['disease']}',
+      if ('${i['frames'] ?? ''}'.length > 2) 'ramki',
+      if ('${i['photos'] ?? ''}'.length > 2) 'zdjęcia',
       if ((i['notes'] ?? '').toString().isNotEmpty) '${i['notes']}',
     ];
     return parts.isEmpty ? 'bez uwag' : parts.join(' · ');

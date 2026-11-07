@@ -31,6 +31,8 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' $M || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <application|' $M
           grep -q 'ACCESS_COARSE_LOCATION' $M || sed -i 's|<application|<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <application|' $M
+          grep -q 'RECORD_AUDIO' $M || sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <application|' $M
+          if ! grep -q 'RecognitionService' $M; then I='<intent><action android:name="android.speech.RecognitionService"/></intent><intent><action android:name="android.media.action.IMAGE_CAPTURE"/></intent>'; if grep -q '<queries>' $M; then sed -i "0,/<queries>/s||<queries>$I|" $M; else sed -i "s|</manifest>|<queries>$I</queries></manifest>|" $M; fi; fi
           sed -i 's|android:label="mobeehive"|android:label="Mobeehive"|' $M
 
       - run: flutter pub get

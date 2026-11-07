@@ -104,6 +104,8 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
     if (ins == null) return scheme.surfaceContainerHighest;
     final at = DateTime.tryParse('${ins['inspected_at']}');
     if (at == null || DateTime.now().difference(at).inDays > 30) return scheme.surfaceContainerHighest;
+    bool on(dynamic v) => v == true || v == 1 || v == '1';
+    if (on(ins['swarm_mood']) || on(ins['no_brood'])) return Colors.red.shade400;
     final s = int.tryParse('${ins['strength']}') ?? 3;
     return [Colors.red.shade300, Colors.orange.shade300, Colors.amber.shade300, Colors.lightGreen.shade300, Colors.green.shade400][(s - 1).clamp(0, 4)];
   }
@@ -170,6 +172,10 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
                         if ((h['name'] ?? '').toString().isNotEmpty)
                           Text('${h['name']}', maxLines: 1, overflow: TextOverflow.ellipsis),
                         Text(ins == null ? 'brak przeglądu' : _ago(ins['inspected_at']), style: Theme.of(context).textTheme.bodySmall),
+                        if (ins != null && (ins['swarm_mood'] == 1 || ins['swarm_mood'] == true))
+                          const Text('nastrój rojowy', style: TextStyle(fontWeight: FontWeight.bold)),
+                        if (ins != null && (ins['no_brood'] == 1 || ins['no_brood'] == true))
+                          const Text('brak czerwiu', style: TextStyle(fontWeight: FontWeight.bold)),
                       ]),
                     ),
                   ),
