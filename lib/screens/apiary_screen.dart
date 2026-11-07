@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../db.dart';
+import '../widgets.dart';
 import '../feeding.dart';
 import '../location.dart';
 import '../sync.dart';
@@ -184,44 +185,11 @@ class _ApiaryScreenState extends State<ApiaryScreen> {
             ),
         ),
       ]),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          child: Row(children: [
-            Expanded(
-              child: SizedBox(
-                height: 64,
-                child: FilledButton.icon(
-                  onPressed: () => _open(HiveForm(apiaryId: widget.apiaryId)),
-                  icon: const Icon(Icons.add, size: 26),
-                  label: const Text('Dodaj ul', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: SizedBox(
-                height: 64,
-                child: FilledButton.tonalIcon(
-                  onPressed: _hives.isEmpty ? null : () => _open(FeedingForm(apiaryId: widget.apiaryId)),
-                  icon: const Icon(Icons.water_drop_outlined, size: 26),
-                  label: const Text('Karmienie', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              height: 64,
-              width: 64,
-              child: FilledButton.tonal(
-                style: FilledButton.styleFrom(padding: EdgeInsets.zero),
-                onPressed: _hives.isEmpty ? null : () => _open(TreatmentForm(apiaryId: widget.apiaryId)),
-                child: const Icon(Icons.medication_outlined, size: 28),
-              ),
-            ),
-          ]),
-        ),
-      ),
+      bottomNavigationBar: BigActionBar(actions: [
+        BarAction('Dodaj ul', Icons.add, () => _open(HiveForm(apiaryId: widget.apiaryId)), primary: true),
+        BarAction('Karmienie', Icons.water_drop_outlined, _hives.isEmpty ? null : () => _open(FeedingForm(apiaryId: widget.apiaryId))),
+        BarAction('Leczenie', Icons.medication_outlined, _hives.isEmpty ? null : () => _open(TreatmentForm(apiaryId: widget.apiaryId))),
+      ]),
     );
   }
 

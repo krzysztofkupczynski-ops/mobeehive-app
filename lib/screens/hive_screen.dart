@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../db.dart';
+import '../widgets.dart';
 import '../feeding.dart';
 import '../sync.dart';
 import 'feeding_form.dart';
@@ -235,44 +236,11 @@ class _HiveScreenState extends State<HiveScreen> {
             onTap: () => _open(InspectionForm(hive: h, inspection: i)),
           ),
       ]),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          child: Row(children: [
-            Expanded(
-              child: SizedBox(
-                height: 64,
-                child: FilledButton.icon(
-                  onPressed: () => _open(InspectionForm(hive: h)),
-                  icon: const Icon(Icons.fact_check_outlined, size: 26),
-                  label: const Text('Przegląd', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: SizedBox(
-                height: 64,
-                child: FilledButton.tonalIcon(
-                  onPressed: () => _open(FeedingForm(apiaryId: h['apiary_id'] as String, hive: h)),
-                  icon: const Icon(Icons.water_drop_outlined, size: 26),
-                  label: const Text('Karmienie', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              height: 64,
-              width: 64,
-              child: FilledButton.tonal(
-                style: FilledButton.styleFrom(padding: EdgeInsets.zero),
-                onPressed: () => _open(TreatmentForm(apiaryId: h['apiary_id'] as String, hive: h)),
-                child: const Icon(Icons.medication_outlined, size: 28),
-              ),
-            ),
-          ]),
-        ),
-      ),
+      bottomNavigationBar: BigActionBar(actions: [
+        BarAction('Przegląd', Icons.fact_check_outlined, () => _open(InspectionForm(hive: h)), primary: true),
+        BarAction('Karmienie', Icons.water_drop_outlined, () => _open(FeedingForm(apiaryId: h['apiary_id'] as String, hive: h))),
+        BarAction('Leczenie', Icons.medication_outlined, () => _open(TreatmentForm(apiaryId: h['apiary_id'] as String, hive: h))),
+      ]),
     );
   }
 

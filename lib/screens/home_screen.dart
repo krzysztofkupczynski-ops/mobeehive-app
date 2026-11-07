@@ -163,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               Icon(icon, size: 30),
               const SizedBox(height: 4),
-              Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
             ]),
           ),
         ),

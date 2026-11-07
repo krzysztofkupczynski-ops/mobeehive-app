@@ -164,9 +164,75 @@ class BigSaveBar extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onPressed,
               icon: const Icon(Icons.check, size: 28),
-              label: Text(label, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+              label: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600))),
             ),
           ),
         ),
       );
+}
+
+/// Akcja dolnego paska: ikona nad podpisem.
+class BarAction {
+  const BarAction(this.label, this.icon, this.onTap, {this.primary = false});
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool primary;
+}
+
+/// Dolny pasek dużych przycisków. Podpis zawsze w jednej linii (zmniejsza się przy dużej czcionce systemowej).
+class BigActionBar extends StatelessWidget {
+  const BigActionBar({super.key, required this.actions});
+  final List<BarAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: Row(children: [
+          for (final (i, a) in actions.indexed) ...[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 76,
+                child: Material(
+                  color: a.onTap == null
+                      ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
+                      : a.primary
+                          ? scheme.primary
+                          : scheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: a.onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(a.icon, size: 30, color: a.primary ? scheme.onPrimary : scheme.onSecondaryContainer),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            a.label,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: a.primary ? scheme.onPrimary : scheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
 }

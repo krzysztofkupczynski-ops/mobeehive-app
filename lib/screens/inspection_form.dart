@@ -627,7 +627,7 @@ class _PhotosModuleState extends State<PhotosModule> {
               child: FilledButton.icon(
                 onPressed: () => _take(ImageSource.camera),
                 icon: const Icon(Icons.photo_camera, size: 28),
-                label: const Text('Zrób zdjęcie', style: TextStyle(fontSize: 17)),
+                label: FittedBox(fit: BoxFit.scaleDown, child: Text('Zrób zdjęcie', maxLines: 1, style: const TextStyle(fontSize: 17))),
               ),
             ),
           ),
@@ -638,7 +638,7 @@ class _PhotosModuleState extends State<PhotosModule> {
               child: FilledButton.tonalIcon(
                 onPressed: () => _take(ImageSource.gallery),
                 icon: const Icon(Icons.photo_library_outlined, size: 28),
-                label: const Text('Z galerii', style: TextStyle(fontSize: 17)),
+                label: FittedBox(fit: BoxFit.scaleDown, child: Text('Z galerii', maxLines: 1, style: const TextStyle(fontSize: 17))),
               ),
             ),
           ),

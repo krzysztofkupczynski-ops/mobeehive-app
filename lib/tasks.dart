@@ -7,7 +7,8 @@ final _day = DateFormat('yyyy-MM-dd');
 
 /// Kolor znakowania matek wg roku (międzynarodowy kod: ostatnia cyfra roku).
 ({String name, Color color}) queenColor(int? year) {
-  switch ((year ?? -1) % 5) {
+  if (year == null) return (name: '–', color: Colors.grey.shade400);
+  switch (year % 5) {
     case 1:
       return (name: 'biały', color: Colors.white);
     case 2:

@@ -131,7 +131,7 @@ class _ApiaryFormState extends State<ApiaryForm> {
                       icon: _locating
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.my_location),
-                      label: const Text('Jestem tutaj', style: TextStyle(fontSize: 16)),
+                      label: FittedBox(fit: BoxFit.scaleDown, child: Text('Jestem tutaj', maxLines: 1, style: const TextStyle(fontSize: 16))),
                     ),
                   ),
                 ),
@@ -142,7 +142,7 @@ class _ApiaryFormState extends State<ApiaryForm> {
                     child: FilledButton.tonalIcon(
                       onPressed: _onMap,
                       icon: const Icon(Icons.map_outlined),
-                      label: const Text('Na mapie', style: TextStyle(fontSize: 16)),
+                      label: FittedBox(fit: BoxFit.scaleDown, child: Text('Na mapie', maxLines: 1, style: const TextStyle(fontSize: 16))),
                     ),
                   ),
                 ),
