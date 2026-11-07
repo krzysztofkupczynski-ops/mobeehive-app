@@ -75,9 +75,12 @@ jobs:
           echo "SIGNED=1" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
+
+        continue-on-error: true
         with:
           name: mobeehive-apk-${{ steps.ver.outputs.name }}
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 3
 
       - name: Wyślij na mobeehive.pl (aktualizacja w aplikacji)
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
